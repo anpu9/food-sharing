@@ -1,18 +1,26 @@
 package com.hmdp.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.LoginFormDTO;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
 
+import java.util.concurrent.TimeUnit;
+
+import static com.hmdp.utils.RedisConstants.LOGIN_CODE_KEY;
+import static com.hmdp.utils.RedisConstants.LOGIN_CODE_TTL;
 import static com.hmdp.utils.SystemConstants.USER_NICK_NAME_PREFIX;
 
 /**
@@ -26,9 +34,11 @@ import static com.hmdp.utils.SystemConstants.USER_NICK_NAME_PREFIX;
 @Service
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
-
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
     @Override
     public Result sendCode(String phone, HttpSession session) {
+
         //1.校验手机号
         if(RegexUtils.isPhoneInvalid(phone)){
             //2.如果手机号错误，返回错误信息
@@ -37,7 +47,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //3.正确，生成验证码（用到了hutu工具包）
         String code = RandomUtil.randomNumbers(6);
         //4.将验证码保存在session中
-        session.setAttribute("code",code);
+        stringRedisTemplate.opsForValue().set(LOGIN_CODE_KEY+phone,code,LOGIN_CODE_TTL, TimeUnit.MINUTES);
         //5.返回(假），可以自己用阿里云或者腾讯实现
         log.debug("发送验证码成功：{}",code);
         // 成功结果
@@ -68,9 +78,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             //逻辑比较复杂就放在方法里面
             user = createUserWithPhone(phone);
         }
-        //5.存在就保存登录状态到session
-        session.setAttribute("user",user);
-        return null;
+        //5.存在就保存登录状态到session,保存DTO
+        session.setAttribute("user", BeanUtil.copyProperties(user, UserDTO.class));
+        return Result.ok();
     }
 
     private User createUserWithPhone(String phone) {
