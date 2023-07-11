@@ -105,7 +105,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //2.设置属性
         user.setPhone(phone);
         user.setNickName(USER_NICK_NAME_PREFIX + RandomUtil.randomString(10));
-        //3.保存在数据库，使用mp
+        //3.保存在数据库，使用mp(hutu工具包）
         save(user);
         //4.返回
         return user;
