@@ -86,6 +86,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //1.生成token key UUID
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
         String token = UUID.randomUUID().toString(true);
+
         Map<String, Object> userMap = BeanUtil.beanToMap(userDTO,new HashMap<>(),
                 CopyOptions.create()
                         .setIgnoreNullValue(true)
@@ -93,7 +94,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //2.hash存储属性
         stringRedisTemplate.opsForHash().putAll(LOGIN_USER_KEY+token,userMap);
         //3.设置token访问有效期
-        stringRedisTemplate.expire(LOGIN_USER_KEY+token,LOGIN_USER_TTL, TimeUnit.MILLISECONDS);
+//        stringRedisTemplate.expire(LOGIN_USER_KEY+token,LOGIN_USER_TTL, TimeUnit.MINUTES);
+
 
         //3.将token返回给前端
         return Result.ok(token);
