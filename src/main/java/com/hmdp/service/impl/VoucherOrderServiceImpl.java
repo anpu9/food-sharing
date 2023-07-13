@@ -8,8 +8,10 @@ import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
 import com.hmdp.utils.RedisIdWorker;
+import com.hmdp.utils.SimpleRedisLock;
 import com.hmdp.utils.UserHolder;
 import org.springframework.aop.framework.AopContext;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +32,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private ISeckillVoucherService seckillVoucherService;
     @Resource
     private RedisIdWorker redisIdWorker;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public Result secKillVoucher(Long voucherId) {
@@ -49,10 +53,19 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         // TODO 一人一单，查询订单表内是否存在订单（voucher_id,user_id)与当前一致的情况
         Long useId = UserHolder.getUser().getId();
-        synchronized (useId.toString().intern()) {
+        SimpleRedisLock lock = new SimpleRedisLock(stringRedisTemplate,"lock:"+useId);
+        boolean isLock = lock.tryLock(1200);
+        if(!isLock) {
+            // 获取锁失败，返回错误或重试
+            return Result.fail("不允许重复下单！");
+        }
+        try {
             IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
             return proxy.createVoucherOrder(voucherId); //this调用，即本类对象调用
+        } finally {
+            lock.unlock();
         }
+
     }
     @Transactional
     public Result createVoucherOrder(Long voucherId) {
