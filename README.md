@@ -1,4 +1,4 @@
-# 🥘food-sharing
+# 🥘Shop Review Platform
 
 Project Description: This project is aimed at implementing various features using Redis as the underlying technology. It covers functionalities like SMS login, merchant query caching, coupon seckill, nearby merchants, UV statistics, user check-ins, friend followings, and expert store exploration. Each feature utilizes different Redis data structures and concepts to achieve its objective.
 
