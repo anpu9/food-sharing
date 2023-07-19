@@ -34,8 +34,6 @@ import java.util.concurrent.Executors;
  *  服务实现类
  * </p>
  *
- * @author 虎哥
- * @since 2021-12-22
  */
 @Service
 @Slf4j
@@ -109,7 +107,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 } catch (Exception e) {
                     //读取pending-list的消息
                     log.error("读取pending-list消息异常：",e);
-                    handlerPendingList();
                 }
             }
         }
