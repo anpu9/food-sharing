@@ -12,13 +12,18 @@ import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexUtils;
+import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -99,6 +104,54 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         //3.将token返回给前端
         return Result.ok(token);
+    }
+
+    @Override
+    public Result sign() {
+        //get current user
+        Long userId = UserHolder.getUser().getId();
+        //get current month
+        LocalDateTime now = LocalDateTime.now();
+        String keySuffix = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        int day = now.getDayOfMonth();
+        //store in redis
+        String key = USER_SIGN_KEY + userId + keySuffix;
+        stringRedisTemplate.opsForValue().setBit(key,day-1,true);
+        //return
+        return Result.ok();
+    }
+
+    @Override
+    public Result signCount() {
+        //get current user
+        Long userId = UserHolder.getUser().getId();
+        LocalDateTime now = LocalDateTime.now();
+        String keySuffix = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        int day = now.getDayOfMonth();
+        //store in redis
+        String key = USER_SIGN_KEY + userId + keySuffix;
+        //get all sign records until now
+        //traverse the num
+        //and the last bit with 1
+        List<Long> result = stringRedisTemplate.opsForValue().bitField(key, BitFieldSubCommands.create().get(BitFieldSubCommands.BitFieldType.unsigned(day)).valueAt(0));
+        if (result == null || result.isEmpty()) {
+            return Result.ok(0);
+        }
+        Long num = result.get(0);
+        if (num == null || num == 0) {
+            return Result.ok(0);
+        }
+        int count = 0;
+        while (true) {
+            if ((num & 1) == 0) {
+                //没签到就退出
+                break;
+            } else {
+                count++;
+            }
+            num >>>= 1;
+        }
+        return Result.ok(count);
     }
 
     private User createUserWithPhone(String phone) {
